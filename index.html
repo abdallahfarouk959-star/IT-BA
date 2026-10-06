@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام حجز قاعات EELU - أسوان</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --free-bg: #dcfce7;
+            --free-text: #166534;
+            --free-border: #bbf7d0;
+            --busy-bg: #ffe4e6;
+            --busy-text: #e11d48;
+            --border-color: #e2e8f0;
+            --highlight-bg: #f0fdf4;
+            --highlight-border: #86efac;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 30px; }
+        .title-area h1 { color: #1e3a8a; font-weight: 800; font-size: 1.8rem; }
+        .title-area p { color: var(--text-muted); font-size: 0.95rem; }
+        
+        .filter-btn {
+            background-color: #ffffff;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .filter-btn.active {
+            background-color: #16a34a;
+            color: white;
+            border-color: #15803d;
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+        }
+
+        #suggestions-panel {
+            background-color: var(--highlight-bg);
+            border: 1px solid var(--highlight-border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            display: none; 
+            animation: fadeIn 0.4s ease-out;
+        }
+        #suggestions-panel h3 { color: var(--free-text); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .suggestions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+        .suggestion-card { background: white; padding: 15px; border-radius: 8px; border: 1px solid #bbf7d0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .suggestion-card .room-title { font-weight: 700; font-size: 1.1rem; }
+        .suggestion-card .time-text { color: #16a34a; font-size: 0.9rem; font-weight: 600; margin-top: 5px; }
+
+        .tabs { display: flex; gap: 10px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 5px; }
+        .tabs::-webkit-scrollbar { height: 6px; }
+        .tabs::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .tab-btn {
+            background: white;
+            border: 1px solid var(--border-color);
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .table-container { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid var(--border-color); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: right; }
+        th { background-color: #f1f5f9; padding: 15px; font-weight: 800; color: var(--text-main); border-bottom: 2px solid var(--border-color); border-left: 1px solid var(--border-color); min-width: 140px; }
+        td { padding: 12px; border-bottom: 1px solid var(--border-color); border-left: 1px solid var(--border-color); }
+        .time-col { background-color: #f8fafc; font-weight: 700; color: var(--text-muted); width: 120px; }
+
+        .status-badge { display: flex; align-items: center; justify-content: center; padding: 10px; border-radius: 8px; font-size: 0.9rem; font-weight: 700; height: 100%; min-height: 45px; }
+        .status-free { background-color: var(--free-bg); color: var(--free-text); border: 1px solid var(--free-border); }
+        .status-busy { background-color: var(--busy-bg); color: var(--busy-text); border: 1px solid #fecdd3; }
+        .status-hidden { background-color: #f1f5f9; color: #cbd5e1; border: 1px dashed #e2e8f0; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="title-area">
+            <h1>نظام حجز قاعات EELU - أسوان</h1>
+            <p>تحديد الفراغات المتاحة لأنشطة ICPC Community (IT & Business)</p>
+        </div>
+        <button id="toggleFilterBtn" class="filter-btn">✨ تسليط الضوء على الفراغات (+3 ساعات)</button>
+    </header>
+
+    <div id="suggestions-panel">
+        <h3>🎯 أفضل المواعيد المتاحة لأكثر من 3 ساعات متواصلة:</h3>
+        <div id="suggestions-grid" class="suggestions-grid"></div>
+    </div>
+
+    <div id="tabs-container" class="tabs"></div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr id="table-head-row"></tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const DAYS = ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
+    const ROOMS = ['قاعة 1', 'قاعة 2', 'قاعة 3', 'معمل 1', 'معمل 2'];
+    const TIME_SLOTS = [
+        '08:00-09:00', '09:00-10:00', '10:00-11:00', 
+        '11:00-12:00', '12:00-01:00', '01:00-02:00', 
+        '02:00-03:00', '03:00-04:00', '04:00-05:00'
+    ];
+
+    let currentDay = 'الأحد'; 
+    let isFilterActive = false;
+    let scheduleData = {};
+
+    function generateData() {
+        DAYS.forEach(day => {
+            scheduleData[day] = {};
+            ROOMS.forEach(room => {
+                scheduleData[day][room] = {};
+                TIME_SLOTS.forEach(slot => {
+                    scheduleData[day][room][slot] = 'مشغول';
+                });
+            });
+        });
+
+        // السبت
+        ['08:00-09:00', '11:00-12:00', '04:00-05:00'].forEach(s => scheduleData['السبت']['قاعة 1'][s] = null);
+        ['08:00-09:00', '04:00-05:00'].forEach(s => scheduleData['السبت']['قاعة 3'][s] = null);
+        ['03:00-04:00', '04:00-05:00'].forEach(s => scheduleData['السبت']['معمل 1'][s] = null);
+        ['08:00-09:00', '10:00-11:00', '02:00-03:00'].forEach(s => scheduleData['السبت']['معمل 2'][s] = null);
+
+        // الأحد
+        ['08:00-09:00', '09:00-10:00', '10:00-11:00', '04:00-05:00'].forEach(s => scheduleData['الأحد']['قاعة 1'][s] = null);
+        ['11:00-12:00', '01:00-02:00'].forEach(s => scheduleData['الأحد']['قاعة 2'][s] = null);
+        ['08:00-09:00', '09:00-10:00'].forEach(s => scheduleData['الأحد']['قاعة 3'][s] = null);
+        ['08:00-09:00', '09:00-10:00', '10:00-11:00', '02:00-03:00'].forEach(s => scheduleData['الأحد']['معمل 1'][s] = null);
+        ['11:00-12:00'].forEach(s => scheduleData['الأحد']['معمل 2'][s] = null);
+
+        // الإثنين
+        ['03:00-04:00', '04:00-05:00'].forEach(s => scheduleData['الإثنين']['قاعة 1'][s] = null);
+        ['01:00-02:00', '04:00-05:00'].forEach(s => scheduleData['الإثنين']['قاعة 3'][s] = null);
+        ['10:00-11:00', '03:00-04:00', '04:00-05:00'].forEach(s => scheduleData['الإثنين']['معمل 1'][s] = null);
+        ['08:00-09:00', '02:00-03:00', '03:00-04:00', '04:00-05:00'].forEach(s => scheduleData['الإثنين']['معمل 2'][s] = null);
+
+        // الثلاثاء
+        ['04:00-05:00'].forEach(s => scheduleData['الثلاثاء']['قاعة 1'][s] = null);
+        ['09:00-10:00'].forEach(s => scheduleData['الثلاثاء']['قاعة 2'][s] = null);
+        ['11:00-12:00', '03:00-04:00', '04:00-05:00'].forEach(s => scheduleData['الثلاثاء']['قاعة 3'][s] = null);
+        ['08:00-09:00', '12:00-01:00', '04:00-05:00'].forEach(s => scheduleData['الثلاثاء']['معمل 1'][s] = null);
+        ['09:00-10:00', '10:00-11:00'].forEach(s => scheduleData['الثلاثاء']['معمل 2'][s] = null);
+
+        // الأربعاء
+        ['04:00-05:00'].forEach(s => scheduleData['الأربعاء']['قاعة 1'][s] = null);
+        ['08:00-09:00'].forEach(s => scheduleData['الأربعاء']['قاعة 2'][s] = null);
+        ['08:00-09:00'].forEach(s => scheduleData['الأربعاء']['قاعة 3'][s] = null);
+        ['08:00-09:00', '09:00-10:00', '10:00-11:00', '03:00-04:00', '04:00-05:00'].forEach(s => scheduleData['الأربعاء']['معمل 1'][s] = null);
+        ['11:00-12:00', '04:00-05:00'].forEach(s => scheduleData['الأربعاء']['معمل 2'][s] = null);
+
+        // الخميس
+        ['01:00-02:00', '04:00-05:00'].forEach(s => scheduleData['الخميس']['قاعة 1'][s] = null);
+        ['08:00-09:00', '09:00-10:00', '03:00-04:00', '04:00-05:00'].forEach(s => scheduleData['الخميس']['قاعة 2'][s] = null);
+        ['04:00-05:00'].forEach(s => scheduleData['الخميس']['قاعة 3'][s] = null);
+        ['08:00-09:00', '02:00-03:00', '03:00-04:00'].forEach(s => scheduleData['الخميس']['معمل 1'][s] = null);
+        ['11:00-12:00', '03:00-04:00'].forEach(s => scheduleData['الخميس']['معمل 2'][s] = null);
+    }
+
+    function findPerfectSpots() {
+        const spots = [];
+        DAYS.forEach(day => {
+            ROOMS.forEach(room => {
+                let freeCount = 0;
+                let startIndex = -1;
+                
+                TIME_SLOTS.forEach((slot, index) => {
+                    if (scheduleData[day][room][slot] === null) {
+                        if (freeCount === 0) startIndex = index;
+                        freeCount++;
+                    } else {
+                        if (freeCount >= 3) {
+                            spots.push({
+                                day: day,
+                                room: room,
+                                time: `من ${TIME_SLOTS[startIndex].split('-')[0]} إلى ${TIME_SLOTS[index - 1].split('-')[1]}`
+                            });
+                        }
+                        freeCount = 0;
+                    }
+                });
+                
+                if (freeCount >= 3) {
+                    spots.push({
+                        day: day,
+                        room: room,
+                        time: `من ${TIME_SLOTS[startIndex].split('-')[0]} إلى ${TIME_SLOTS[TIME_SLOTS.length - 1].split('-')[1]}`
+                    });
+                }
+            });
+        });
+        return spots;
+    }
+
+    function renderTabs() {
+        const tabsContainer = document.getElementById('tabs-container');
+        tabsContainer.innerHTML = '';
+        
+        DAYS.forEach(day => {
+            const btn = document.createElement('button');
+            btn.className = `tab-btn ${day === currentDay ? 'active' : ''}`;
+            btn.innerText = day;
+            btn.onclick = () => {
+                currentDay = day;
+                renderTabs(); 
+                renderTable(); 
+            };
+            tabsContainer.appendChild(btn);
+        });
+    }
+
+    function renderTableHeaders() {
+        const tr = document.getElementById('table-head-row');
+        tr.innerHTML = '<th class="time-col">الوقت / القاعة</th>';
+        ROOMS.forEach(room => {
+            tr.innerHTML += `<th>${room}</th>`;
+        });
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('table-body');
+        let tableRowsHTML = ''; 
+
+        TIME_SLOTS.forEach(slot => {
+            let rowHtml = `<td class="time-col">${slot}</td>`;
+            
+            ROOMS.forEach(room => {
+                const status = scheduleData[currentDay][room][slot];
+                const isFree = status === null;
+                
+                if (isFree) {
+                    rowHtml += `<td><div class="status-badge status-free">متاح</div></td>`;
+                } else {
+                    if (isFilterActive) {
+                        rowHtml += `<td><div class="status-badge status-hidden">-</div></td>`;
+                    } else {
+                        rowHtml += `<td><div class="status-badge status-busy">${status}</div></td>`;
+                    }
+                }
+            });
+            
+            tableRowsHTML += `<tr>${rowHtml}</tr>`;
+        });
+
+        tbody.innerHTML = tableRowsHTML; 
+    }
+
+    function renderSuggestions() {
+        const panel = document.getElementById('suggestions-panel');
+        const grid = document.getElementById('suggestions-grid');
+        
+        if (isFilterActive) {
+            const spots = findPerfectSpots();
+            let cardsHTML = ''; 
+            
+            spots.forEach(spot => {
+                cardsHTML += `
+                    <div class="suggestion-card">
+                        <div class="room-title">يوم ${spot.day} - ${spot.room}</div>
+                        <div class="time-text">${spot.time}</div>
+                    </div>
+                `;
+            });
+            
+            grid.innerHTML = cardsHTML;
+            panel.style.display = 'block';
+        } else {
+            grid.innerHTML = '';
+            panel.style.display = 'none';
+        }
+    }
+
+    function init() {
+        generateData();
+        renderTabs();
+        renderTableHeaders();
+        renderTable();
+
+        const filterBtn = document.getElementById('toggleFilterBtn');
+        filterBtn.onclick = () => {
+            isFilterActive = !isFilterActive;
+            if (isFilterActive) {
+                filterBtn.classList.add('active');
+                filterBtn.innerText = 'إلغاء الفلتر وعرض الجدول كامل';
+            } else {
+                filterBtn.classList.remove('active');
+                filterBtn.innerText = '✨ تسليط الضوء على الفراغات (+3 ساعات)';
+            }
+            renderSuggestions();
+            renderTable();
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
